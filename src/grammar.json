@@ -1450,11 +1450,11 @@
             },
             {
               "type": "SYMBOL",
-              "name": "_translated_string"
+              "name": "variable"
             },
             {
               "type": "SYMBOL",
-              "name": "variable"
+              "name": "_translated_string"
             }
           ]
         },

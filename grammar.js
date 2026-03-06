@@ -147,8 +147,8 @@ module.exports = grammar({
         $.number,
         $.boolean,
         $.string,
-        $._translated_string,
-        $.variable
+        $.variable,
+        $._translated_string
       ),
       optional(choice(",", "="))
     ),
