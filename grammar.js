@@ -49,13 +49,12 @@ module.exports = grammar({
     operator: $ => choice("==", "!=", "<", ">", "<=", ">="),
     number: $ => /[0-9]+/,
     boolean: $ => token(seq(choice("True", "False"), /\s/)),
-    string: $ => seq(
-      choice(
-        seq("'", repeat(/[^']/), "'"),
-        seq('"', repeat(/[^"]/), '"')
-      ),
-      repeat(seq("|", $.filter))
+    string: $ => seq($._string_literal, repeat(seq("|", $.filter))),
+    _string_literal: $ => choice(
+      seq("'", repeat(/[^']/), "'"),
+      seq('"', repeat(/[^"]/), '"')
     ),
+    _translated_string: $ => seq("_(", alias($._string_literal, $.string), ")"),
 
     _identifier: $ => /\w+/,
 
@@ -66,12 +65,16 @@ module.exports = grammar({
     // Django variables cannot start with an "_", can contain one or more words separated by a "."
     variable_name: $ => /[a-zA-Z](\w+)?((\.?\w)+)?/,
 
-    filter: $ => seq($.filter_name, optional(seq(":", choice($.filter_argument, $._quoted_filter_argument)))),
+    filter: $ => seq($.filter_name, optional(seq(":", choice($.filter_argument, $._quoted_filter_argument, $._translated_filter_argument)))),
     filter_name: $ => $._identifier,
     filter_argument: $ => seq($._identifier, repeat(seq(".", $._identifier))),
     _quoted_filter_argument: $ => choice(
       seq("'", alias(repeat(/[^']/), $.filter_argument), "'"),
       seq('"', alias(repeat(/[^"]/), $.filter_argument), '"')
+    ),
+    _translated_filter_argument: $ => choice(
+      seq("_(", "'", alias(repeat(/[^']/), $.filter_argument), "'", ")"),
+      seq("_(", '"', alias(repeat(/[^"]/), $.filter_argument), '"', ")")
     ),
 
     // Statements
@@ -144,6 +147,7 @@ module.exports = grammar({
         $.number,
         $.boolean,
         $.string,
+        $._translated_string,
         $.variable
       ),
       optional(choice(",", "="))
