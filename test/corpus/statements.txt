@@ -650,3 +650,25 @@ custom
   (unpaired_statement
       (tag_name))
   (content))
+
+==================
+translation syntax
+==================
+
+<html>
+  {% some_tag _("Page not found") value|yesno:_("yes,no") %}
+</html>
+
+---
+
+(template
+  (content)
+  (unpaired_statement
+    (tag_name)
+    (string)
+    (variable
+      (variable_name)
+      (filter
+        (filter_name)
+        (filter_argument))))
+  (content))

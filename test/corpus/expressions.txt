@@ -141,3 +141,26 @@ string
       (filter_name)
       (filter_argument)))
   (content))
+
+==================
+translated filter argument
+==================
+
+<div>
+  <span class="w-editing-sessions__name">
+    {{ session.user|user_display_name|default:_("System") }}
+  </span>
+</div>
+
+---
+
+(template
+  (content)
+  (variable
+    (variable_name)
+    (filter
+      (filter_name))
+    (filter
+      (filter_name)
+      (filter_argument)))
+  (content))
