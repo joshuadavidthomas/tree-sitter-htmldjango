@@ -560,6 +560,30 @@ verbatim
   (content))
 
 ==================
+verbatim with template syntax inside
+==================
+
+<html>
+  {% verbatim %}
+    {{ variable }}
+    {% if unclosed %}
+    {# comment #}
+    invalid {{ syntax here
+  {% endverbatim %}
+</html>
+
+---
+
+(template
+  (content)
+  (paired_statement
+    (tag_name)
+    (content)
+    (tag_name)
+    (end_paired_statement))
+  (content))
+
+==================
 with
 ==================
 

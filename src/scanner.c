@@ -2,7 +2,8 @@
 #include <wctype.h>
 
 enum TokenType {
-    PAIRED_COMMENT_CONTENT
+    PAIRED_COMMENT_CONTENT,
+    VERBATIM_CONTENT
 };
 
 static void advance(TSLexer *lexer) {
@@ -49,6 +50,29 @@ bool tree_sitter_htmldjango_external_scanner_scan(
                             return true;
                         }
                         depth--;
+                    }
+                }
+            }
+
+            advance(lexer);
+        }
+    }
+
+    if (valid_symbols[VERBATIM_CONTENT]) {
+        while (lexer->lookahead != 0) {
+            lexer->mark_end(lexer);
+
+            if (lexer->lookahead == '{') {
+                advance(lexer);
+
+                if (lexer->lookahead == '%') {
+                    advance(lexer);
+
+                    while (iswspace(lexer->lookahead)) advance(lexer);
+
+                    if (scan_str(lexer, "endverbatim")) {
+                        lexer->result_symbol = VERBATIM_CONTENT;
+                        return true;
                     }
                 }
             }

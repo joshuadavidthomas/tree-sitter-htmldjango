@@ -4,7 +4,8 @@ module.exports = grammar({
   word: $ => $._identifier,
 
   externals: $ => [
-    $._paired_comment_content
+    $._paired_comment_content,
+    $._verbatim_content
   ],
 
   rules: {
@@ -85,6 +86,7 @@ module.exports = grammar({
       alias($.if_statement, $.paired_statement),
       alias($.for_statement, $.paired_statement),
       alias($.filter_statement, $.paired_statement),
+      alias($.verbatim_statement, $.paired_statement),
       $.unpaired_statement
     ),
 
@@ -95,7 +97,6 @@ module.exports = grammar({
         "blocktranslate",
         "ifchanged",
         "spaceless",
-        "verbatim",
         "with"
       ];
 
@@ -137,6 +138,12 @@ module.exports = grammar({
       repeat($._node),
       "{%", alias("endfilter", $.tag_name), alias("%}", $.end_paired_statement)
     ),
+    verbatim_statement: $ => seq(
+      "{%", alias("verbatim", $.tag_name), repeat($._attribute), "%}",
+      alias($._verbatim_content, $.content),
+      "{%", alias("endverbatim", $.tag_name), repeat($._attribute), alias("%}", $.end_paired_statement)
+    ),
+
     unpaired_statement: $ => seq("{%", alias($._identifier, $.tag_name), repeat($._attribute), "%}"),
 
     _attribute: $ => seq(
