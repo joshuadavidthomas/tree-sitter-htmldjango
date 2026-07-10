@@ -24,3 +24,4 @@
 (number) @number
 (boolean) @boolean
 (string) @string
+(verbatim_label) @label

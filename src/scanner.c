@@ -9,16 +9,15 @@ enum TokenType {
     VERBATIM_LABEL
 };
 
-#define VERBATIM_LABEL_MAX 255
-
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(VERBATIM_LABEL_MAX + 1 <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE,
-               "verbatim label must fit in the serialization buffer");
-#endif
+// Django compares the full stripped tag content ("endverbatim" + label,
+// internal whitespace preserved) byte-for-byte against the string stored
+// when the block opened. See Lexer.create_token in django/template/base.py.
+// The label is stored as code points so comparison is exact for non-ASCII.
+#define LABEL_CAPACITY (TREE_SITTER_SERIALIZATION_BUFFER_SIZE / sizeof(uint32_t))
 
 typedef struct {
-    uint8_t label_len;
-    char label[VERBATIM_LABEL_MAX];
+    uint32_t label_len;
+    uint32_t label[LABEL_CAPACITY];
 } Scanner;
 
 static void advance(TSLexer *lexer) {
@@ -29,9 +28,10 @@ static void skip(TSLexer *lexer) {
     lexer->advance(lexer, true);
 }
 
-static bool is_word_char(int32_t c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-           (c >= '0' && c <= '9') || c == '_';
+// Django's tag regex ({%.*?%}) cannot match across a newline, so a newline
+// terminates any candidate tag. '.' matches every other whitespace character.
+static bool is_inline_space(int32_t c) {
+    return c != '\n' && iswspace(c);
 }
 
 static bool scan_str(TSLexer *lexer, const char *str) {
@@ -45,20 +45,59 @@ static bool scan_str(TSLexer *lexer, const char *str) {
     return true;
 }
 
-// Django closes a verbatim block only when the endverbatim label is an exact
-// match for the opening label (both empty counts as a match).
+// Captures everything between "verbatim" and "%}" with trailing whitespace
+// stripped, mirroring Django's token_string[2:-2].strip(). The token spans
+// only the stripped label text; surrounding whitespace stays out of the node.
+static bool scan_verbatim_label(Scanner *scanner, TSLexer *lexer) {
+    // Django only activates verbatim mode when the tag name is followed by
+    // a literal space: block_content[:9] in ('verbatim', 'verbatim ').
+    if (lexer->lookahead != ' ') return false;
+
+    uint32_t len = 0;
+    uint32_t stripped_len = 0;
+
+    while (is_inline_space(lexer->lookahead)) {
+        if (len >= LABEL_CAPACITY) return false;
+        scanner->label[len++] = (uint32_t)lexer->lookahead;
+        skip(lexer);
+    }
+
+    while (lexer->lookahead != 0 && lexer->lookahead != '\n') {
+        if (lexer->lookahead == '%') {
+            advance(lexer);
+            if (lexer->lookahead == '}') {
+                if (stripped_len == 0) return false;
+                scanner->label_len = stripped_len;
+                lexer->result_symbol = VERBATIM_LABEL;
+                return true;
+            }
+            if (len >= LABEL_CAPACITY) return false;
+            scanner->label[len++] = '%';
+            stripped_len = len;
+            lexer->mark_end(lexer);
+            continue;
+        }
+
+        if (len >= LABEL_CAPACITY) return false;
+        scanner->label[len++] = (uint32_t)lexer->lookahead;
+        bool space = is_inline_space(lexer->lookahead);
+        advance(lexer);
+        if (!space) {
+            stripped_len = len;
+            lexer->mark_end(lexer);
+        }
+    }
+
+    return false;
+}
+
 static bool scan_matching_end_label(Scanner *scanner, TSLexer *lexer) {
-    if (is_word_char(lexer->lookahead)) return false;
-
-    while (iswspace(lexer->lookahead)) advance(lexer);
-
-    for (uint8_t i = 0; i < scanner->label_len; i++) {
-        if (lexer->lookahead != scanner->label[i]) return false;
+    for (uint32_t i = 0; i < scanner->label_len; i++) {
+        if (lexer->lookahead != (int32_t)scanner->label[i]) return false;
         advance(lexer);
     }
-    if (is_word_char(lexer->lookahead)) return false;
 
-    while (iswspace(lexer->lookahead)) advance(lexer);
+    while (is_inline_space(lexer->lookahead)) advance(lexer);
 
     if (lexer->lookahead != '%') return false;
     advance(lexer);
@@ -71,6 +110,13 @@ bool tree_sitter_htmldjango_external_scanner_scan(
     const bool *valid_symbols
 ) {
     Scanner *scanner = (Scanner *)payload;
+
+    // VERBATIM_LABEL and VERBATIM_CONTENT are never valid in the same parse
+    // state; both being valid means error recovery, where scanning could
+    // mutate label state or swallow arbitrary source.
+    if (valid_symbols[VERBATIM_LABEL] && valid_symbols[VERBATIM_CONTENT]) {
+        return false;
+    }
 
     if (valid_symbols[PAIRED_COMMENT_CONTENT]) {
         int depth = 0;
@@ -104,25 +150,8 @@ bool tree_sitter_htmldjango_external_scanner_scan(
         }
     }
 
-    // VERBATIM_LABEL and VERBATIM_CONTENT are never valid in the same parse
-    // state; both being valid means error recovery, where capturing a label
-    // would poison scanner state.
-    if (valid_symbols[VERBATIM_LABEL] && !valid_symbols[VERBATIM_CONTENT]) {
-        while (iswspace(lexer->lookahead)) skip(lexer);
-
-        if (is_word_char(lexer->lookahead)) {
-            uint8_t len = 0;
-            while (is_word_char(lexer->lookahead)) {
-                if (len >= VERBATIM_LABEL_MAX) return false;
-                scanner->label[len++] = (char)lexer->lookahead;
-                advance(lexer);
-            }
-            scanner->label_len = len;
-            lexer->mark_end(lexer);
-            lexer->result_symbol = VERBATIM_LABEL;
-            return true;
-        }
-        return false;
+    if (valid_symbols[VERBATIM_LABEL]) {
+        return scan_verbatim_label(scanner, lexer);
     }
 
     if (valid_symbols[VERBATIM_CONTENT]) {
@@ -135,7 +164,7 @@ bool tree_sitter_htmldjango_external_scanner_scan(
                 if (lexer->lookahead == '%') {
                     advance(lexer);
 
-                    while (iswspace(lexer->lookahead)) advance(lexer);
+                    while (is_inline_space(lexer->lookahead)) advance(lexer);
 
                     if (scan_str(lexer, "endverbatim") &&
                         scan_matching_end_label(scanner, lexer)) {
@@ -148,6 +177,12 @@ bool tree_sitter_htmldjango_external_scanner_scan(
 
             advance(lexer);
         }
+
+        // Django stays in verbatim mode through EOF; the interior remains
+        // raw text even when the block is never closed.
+        lexer->mark_end(lexer);
+        lexer->result_symbol = VERBATIM_CONTENT;
+        return true;
     }
 
     return false;
@@ -163,16 +198,13 @@ void tree_sitter_htmldjango_external_scanner_destroy(void *payload) {
 
 unsigned tree_sitter_htmldjango_external_scanner_serialize(void *payload, char *buffer) {
     Scanner *scanner = (Scanner *)payload;
-    buffer[0] = (char)scanner->label_len;
-    memcpy(buffer + 1, scanner->label, scanner->label_len);
-    return scanner->label_len + 1;
+    unsigned size = scanner->label_len * sizeof(uint32_t);
+    memcpy(buffer, scanner->label, size);
+    return size;
 }
 
 void tree_sitter_htmldjango_external_scanner_deserialize(void *payload, const char *buffer, unsigned length) {
     Scanner *scanner = (Scanner *)payload;
-    scanner->label_len = 0;
-    if (length > 0) {
-        scanner->label_len = (uint8_t)buffer[0];
-        memcpy(scanner->label, buffer + 1, scanner->label_len);
-    }
+    scanner->label_len = length / sizeof(uint32_t);
+    memcpy(scanner->label, buffer, length);
 }

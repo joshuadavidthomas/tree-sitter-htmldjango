@@ -1353,13 +1353,8 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "ALIAS",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_verbatim_label"
-              },
-              "named": true,
-              "value": "variable_name"
+              "type": "SYMBOL",
+              "name": "verbatim_label"
             },
             {
               "type": "BLANK"
@@ -1399,10 +1394,10 @@
               "type": "ALIAS",
               "content": {
                 "type": "SYMBOL",
-                "name": "_identifier"
+                "name": "_verbatim_end_label"
               },
               "named": true,
-              "value": "variable_name"
+              "value": "verbatim_label"
             },
             {
               "type": "BLANK"
@@ -1419,6 +1414,10 @@
           "value": "end_paired_statement"
         }
       ]
+    },
+    "_verbatim_end_label": {
+      "type": "PATTERN",
+      "value": "[^\\s%}]+([ \\t]+[^\\s%}]+)*"
     },
     "unpaired_statement": {
       "type": "SEQ",
@@ -1614,7 +1613,7 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_verbatim_label"
+      "name": "verbatim_label"
     }
   ],
   "inline": [],

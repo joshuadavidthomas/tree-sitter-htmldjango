@@ -6,7 +6,7 @@ module.exports = grammar({
   externals: $ => [
     $._paired_comment_content,
     $._verbatim_content,
-    $._verbatim_label
+    $.verbatim_label
   ],
 
   rules: {
@@ -140,10 +140,13 @@ module.exports = grammar({
       "{%", alias("endfilter", $.tag_name), alias("%}", $.end_paired_statement)
     ),
     verbatim_statement: $ => seq(
-      "{%", alias("verbatim", $.tag_name), optional(alias($._verbatim_label, $.variable_name)), "%}",
+      "{%", alias("verbatim", $.tag_name), optional($.verbatim_label), "%}",
       alias($._verbatim_content, $.content),
-      "{%", alias("endverbatim", $.tag_name), optional(alias($._identifier, $.variable_name)), alias("%}", $.end_paired_statement)
+      "{%", alias("endverbatim", $.tag_name), optional(alias($._verbatim_end_label, $.verbatim_label)), alias("%}", $.end_paired_statement)
     ),
+    // The scanner has already verified the exact label match before ending
+    // _verbatim_content, so this only needs to consume the label text.
+    _verbatim_end_label: $ => /[^\s%}]+([ \t]+[^\s%}]+)*/,
 
     unpaired_statement: $ => seq("{%", alias($._identifier, $.tag_name), repeat($._attribute), "%}"),
 

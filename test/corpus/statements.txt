@@ -550,10 +550,10 @@ verbatim
   (content)
   (paired_statement
     (tag_name)
-    (variable_name)
+    (verbatim_label)
     (content)
     (tag_name)
-    (variable_name)
+    (verbatim_label)
     (end_paired_statement))
   (content))
 
@@ -594,10 +594,10 @@ labeled verbatim containing bare endverbatim
 (template
   (paired_statement
     (tag_name)
-    (variable_name)
+    (verbatim_label)
     (content)
     (tag_name)
-    (variable_name)
+    (verbatim_label)
     (end_paired_statement))
   (content))
 
@@ -612,6 +612,92 @@ bare verbatim not closed by labeled endverbatim
 ---
 
 (template
+  (paired_statement
+    (tag_name)
+    (content)
+    (tag_name)
+    (end_paired_statement))
+  (content))
+
+==================
+verbatim label mismatch is not a close
+==================
+
+{% verbatim foo %}
+  {% endverbatim bar %}
+  {% endverbatim foobar %}
+  {% endverbatim %}
+{% endverbatim foo %}
+
+---
+
+(template
+  (paired_statement
+    (tag_name)
+    (verbatim_label)
+    (content)
+    (tag_name)
+    (verbatim_label)
+    (end_paired_statement))
+  (content))
+
+==================
+verbatim label with exact internal whitespace
+==================
+
+{% verbatim  x %}
+  {% endverbatim x %}
+{% endverbatim  x %}
+
+---
+
+(template
+  (paired_statement
+    (tag_name)
+    (verbatim_label)
+    (content)
+    (tag_name)
+    (verbatim_label)
+    (end_paired_statement))
+  (content))
+
+==================
+verbatim multiword label
+==================
+
+{% verbatim foo bar %}
+  {% endverbatim foo %}
+{% endverbatim foo bar %}
+
+---
+
+(template
+  (paired_statement
+    (tag_name)
+    (verbatim_label)
+    (content)
+    (tag_name)
+    (verbatim_label)
+    (end_paired_statement))
+  (content))
+
+==================
+consecutive verbatim blocks clear label state
+==================
+
+{% verbatim foo %}a{% endverbatim foo %}
+{% verbatim %}b{% endverbatim bar %}c{% endverbatim %}
+
+---
+
+(template
+  (paired_statement
+    (tag_name)
+    (verbatim_label)
+    (content)
+    (tag_name)
+    (verbatim_label)
+    (end_paired_statement))
   (paired_statement
     (tag_name)
     (content)
@@ -732,3 +818,33 @@ translation syntax
         (filter_name)
         (filter_argument))))
   (content))
+
+==================
+empty verbatim
+==================
+
+{% verbatim %}{% endverbatim %}
+
+---
+
+(template
+  (paired_statement
+    (tag_name)
+    (content)
+    (tag_name)
+    (end_paired_statement))
+  (content))
+
+==================
+unterminated verbatim stays opaque through EOF
+==================
+
+{% verbatim %}
+{{ x }} raw stuff
+
+---
+
+(template
+  (ERROR
+    (tag_name)
+    (content)))
