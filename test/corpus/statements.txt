@@ -550,12 +550,10 @@ verbatim
   (content)
   (paired_statement
     (tag_name)
-    (variable
-      (variable_name))
+    (variable_name)
     (content)
     (tag_name)
-    (variable
-      (variable_name))
+    (variable_name)
     (end_paired_statement))
   (content))
 
@@ -576,6 +574,44 @@ verbatim with template syntax inside
 
 (template
   (content)
+  (paired_statement
+    (tag_name)
+    (content)
+    (tag_name)
+    (end_paired_statement))
+  (content))
+
+==================
+labeled verbatim containing bare endverbatim
+==================
+
+{% verbatim myblock %}
+  Avoid template rendering via the {% verbatim %}{{ }}{% endverbatim %} block.
+{% endverbatim myblock %}
+
+---
+
+(template
+  (paired_statement
+    (tag_name)
+    (variable_name)
+    (content)
+    (tag_name)
+    (variable_name)
+    (end_paired_statement))
+  (content))
+
+==================
+bare verbatim not closed by labeled endverbatim
+==================
+
+{% verbatim %}
+  {% endverbatim other %}
+{% endverbatim %}
+
+---
+
+(template
   (paired_statement
     (tag_name)
     (content)

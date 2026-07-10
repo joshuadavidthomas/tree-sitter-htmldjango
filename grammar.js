@@ -5,7 +5,8 @@ module.exports = grammar({
 
   externals: $ => [
     $._paired_comment_content,
-    $._verbatim_content
+    $._verbatim_content,
+    $._verbatim_label
   ],
 
   rules: {
@@ -139,9 +140,9 @@ module.exports = grammar({
       "{%", alias("endfilter", $.tag_name), alias("%}", $.end_paired_statement)
     ),
     verbatim_statement: $ => seq(
-      "{%", alias("verbatim", $.tag_name), repeat($._attribute), "%}",
+      "{%", alias("verbatim", $.tag_name), optional(alias($._verbatim_label, $.variable_name)), "%}",
       alias($._verbatim_content, $.content),
-      "{%", alias("endverbatim", $.tag_name), repeat($._attribute), alias("%}", $.end_paired_statement)
+      "{%", alias("endverbatim", $.tag_name), optional(alias($._identifier, $.variable_name)), alias("%}", $.end_paired_statement)
     ),
 
     unpaired_statement: $ => seq("{%", alias($._identifier, $.tag_name), repeat($._attribute), "%}"),

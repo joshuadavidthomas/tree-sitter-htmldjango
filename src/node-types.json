@@ -152,6 +152,10 @@
         {
           "type": "variable",
           "named": true
+        },
+        {
+          "type": "variable_name",
+          "named": true
         }
       ]
     }
