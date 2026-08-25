@@ -152,6 +152,10 @@
         {
           "type": "variable",
           "named": true
+        },
+        {
+          "type": "verbatim_label",
+          "named": true
         }
       ]
     }
@@ -375,6 +379,10 @@
   },
   {
     "type": "variable_name",
+    "named": true
+  },
+  {
+    "type": "verbatim_label",
     "named": true
   },
   {
