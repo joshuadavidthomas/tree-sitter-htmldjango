@@ -514,6 +514,27 @@ blocktranslate
   (content))
 
 ==================
+blocktrans
+==================
+
+<html>
+  {% blocktrans %}
+    content
+  {% endblocktrans %}
+</html>
+
+---
+
+(template
+  (content)
+  (paired_statement
+    (tag_name)
+    (content)
+    (tag_name)
+    (end_paired_statement))
+  (content))
+
+==================
 spaceless
 ==================
 
